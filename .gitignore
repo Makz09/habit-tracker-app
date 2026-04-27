@@ -32,9 +32,18 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# local.properties (contains sensitive SDK paths)
+android/local.properties
+ios/local.properties
 
 # generated native folders
 /ios
