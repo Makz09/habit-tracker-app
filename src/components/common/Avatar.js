@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 
-const DEFAULT_AVATAR = 'file:///C:/Users/Boss%20Makz/.gemini/antigravity/brain/154728ab-49c8-497c-b511-bb69742de0a5/default_avatar_placeholder_1776957506175.png';
+const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff';
 
 const Avatar = ({ uri, size = 40, style }) => {
   return (

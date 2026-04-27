@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Lock, ChevronRight, ArrowRight } from 'lucide-react-native';
+import { Mail, Lock, ChevronRight, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { login, resetPassword, loginWithGoogle } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -21,9 +23,55 @@ const Login = ({ navigation }) => {
     try {
       await login(email, password);
     } catch (error) {
-      Alert.alert('Login Failed', error.message);
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        errorMessage = "Incorrect email or password.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address.";
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = "This account has been disabled.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many attempts. Please try again later.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address to reset your password');
+      return;
+    }
+    try {
+      await resetPassword(email.trim());
+      Alert.alert('Success', 'Password reset email sent! Please check your inbox.');
+    } catch (error) {
+      let errorMessage = "Could not send reset email. Please try again.";
+      if (error.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address.";
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      Alert.alert('Error', errorMessage);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      if (error.code !== '-1') { // Ignore user cancellation
+        Alert.alert('Google Sign-In Failed', 'Please ensure you have configured your Web Client ID.');
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -65,19 +113,26 @@ const Login = ({ navigation }) => {
               placeholder="Password"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               placeholderTextColor="#94a3b8"
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+              {showPassword ? (
+                <EyeOff size={20} color="#94a3b8" />
+              ) : (
+                <Eye size={20} color="#94a3b8" />
+              )}
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.forgotBtn}>
+          <TouchableOpacity style={styles.forgotBtn} onPress={handleForgotPassword}>
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={loading || googleLoading}
           >
             {loading ? (
               <ActivityIndicator color="#ffffff" />
@@ -86,6 +141,24 @@ const Login = ({ navigation }) => {
                 <Text style={styles.loginBtnText}>Sign In</Text>
                 <ArrowRight size={20} color="#ffffff" />
               </>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.googleBtn, googleLoading && styles.loginBtnDisabled]}
+            onPress={handleGoogleLogin}
+            disabled={loading || googleLoading}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color="#0f172a" />
+            ) : (
+              <Text style={styles.googleBtnText}>Sign in with Google</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -203,8 +276,10 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 48,
   },
+
   footerText: {
     ...theme.typography.bodyMd,
     color: '#64748b',
@@ -212,6 +287,36 @@ const styles = StyleSheet.create({
   signUpText: {
     ...theme.typography.labelBold,
     color: theme.colors.primary,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#f1f5f9',
+  },
+  dividerText: {
+    ...theme.typography.bodySm,
+    color: '#94a3b8',
+    marginHorizontal: 12,
+  },
+  googleBtn: {
+    backgroundColor: '#ffffff',
+    height: 60,
+    borderRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  googleBtnText: {
+    ...theme.typography.labelBold,
+    color: '#0f172a',
+    fontSize: 16,
   },
 });
 

@@ -1,86 +1,111 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, ImageBackground, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, ImageBackground, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Bell, Plus, BookOpen, Droplets, Wind, PencilLine, Flame, MoreVertical } from 'lucide-react-native';
+import { Search, Bell, Plus, BookOpen, Droplets, Wind, PencilLine, Flame, MoreVertical, Layout, Heart, Brain, Users, Sparkles, Activity } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import { useHabits } from '../context/HabitContext';
 import AddHabitModal from '../components/habit/AddHabitModal';
 import Avatar from '../components/common/Avatar';
 
 const HabitLibrary = () => {
   const { user, logout } = useAuth();
+  const { communityHabits, communityCategories, addCommunityHabit } = useHabits();
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAllRecs, setShowAllRecs] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleMorePress = () => {
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // Real-time sync handles the data, but we provide a tactile refresh
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1500);
+  }, []);
+
+  const handleAddCommunityHabit = (habit) => {
     Alert.alert(
-      "Account Settings",
-      `Signed in as ${user?.email}`,
+      "Add Habit",
+      `Do you want to add "${habit.name}" to your habits?`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Sign Out", onPress: handleLogout, style: "destructive" }
+        { 
+          text: "Add", 
+          onPress: async () => {
+            await addCommunityHabit(habit);
+            Alert.alert("Success", "Habit added to your list!");
+          } 
+        }
       ]
     );
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error("Logout failed: ", error);
-    }
+  // Icon mapping based on category name
+  const getCategoryIcon = (catName) => {
+    const name = catName.toLowerCase();
+    if (name.includes('health')) return Heart;
+    if (name.includes('fitness')) return Activity;
+    if (name.includes('mind') || name.includes('mental')) return Brain;
+    if (name.includes('social')) return Users;
+    if (name.includes('work') || name.includes('product')) return Layout;
+    if (name.includes('read')) return BookOpen;
+    if (name.includes('water')) return Droplets;
+    return Sparkles;
   };
 
-  const categories = [
-    { 
-      id: 'mindfulness', 
-      name: 'Mindfulness', 
-      isPopular: true, 
-      image: 'file:///C:/Users/Boss%20Makz/.gemini/antigravity/brain/154728ab-49c8-497c-b511-bb69742de0a5/mindfulness_bg_1776956962762.png' 
-    },
-    { 
-      id: 'fitness', 
-      name: 'Fitness', 
-      image: 'file:///C:/Users/Boss%20Makz/.gemini/antigravity/brain/154728ab-49c8-497c-b511-bb69742de0a5/fitness_bg_1776956986525.png' 
-    },
-    { 
-      id: 'productivity', 
-      name: 'Productivity', 
-      image: 'file:///C:/Users/Boss%20Makz/.gemini/antigravity/brain/154728ab-49c8-497c-b511-bb69742de0a5/productivity_bg_1776957009963.png' 
-    },
-    { 
-      id: 'health', 
-      name: 'Health', 
-      image: 'file:///C:/Users/Boss%20Makz/.gemini/antigravity/brain/154728ab-49c8-497c-b511-bb69742de0a5/health_bg_1776957030248.png' 
-    },
-    { 
-      id: 'social', 
-      name: 'Social', 
-      image: 'file:///C:/Users/Boss%20Makz/.gemini/antigravity/brain/154728ab-49c8-497c-b511-bb69742de0a5/social_bg_1776957056265.png' 
-    },
-  ];
+  // Dynamic styles for categories
+  const getCategoryStyle = (catName) => {
+    const name = catName?.toLowerCase() || '';
+    if (name.includes('health') || name.includes('medical')) return { bg: '#fee2e2', color: '#ef4444' };
+    if (name.includes('fitness') || name.includes('exercise') || name.includes('takbo')) return { bg: '#ffedd5', color: '#f97316' };
+    if (name.includes('mind') || name.includes('mental')) return { bg: '#ede9fe', color: '#8b5cf6' };
+    if (name.includes('social') || name.includes('friend')) return { bg: '#dbeafe', color: '#3b82f6' };
+    if (name.includes('work') || name.includes('product') || name.includes('side line')) return { bg: '#e0e7ff', color: '#4f46e5' };
+    if (name.includes('read') || name.includes('study')) return { bg: '#fef3c7', color: '#d97706' };
+    if (name.includes('water') || name.includes('drink')) return { bg: '#e0f2fe', color: '#0ea5e9' };
+    
+    const colors = [
+      { bg: '#fce7f3', color: '#ec4899' },
+      { bg: '#dcfce7', color: '#22c55e' },
+      { bg: '#f3e8ff', color: '#a855f7' },
+      { bg: '#ccfbf1', color: '#14b8a6' },
+    ];
+    return colors[name.length % colors.length];
+  };
 
-  const recommendations = [
-    { id: 1, name: 'Read for 20 mins', active: '4.2K ACTIVE', icon: BookOpen, color: '#f97316', bg: '#fff1e6' },
-    { id: 2, name: 'Drink 2L Water', active: '8.9K ACTIVE', icon: Droplets, color: '#0ea5e9', bg: '#e0f2fe' },
-    { id: 3, name: 'Daily Meditation', active: '12.4K ACTIVE', icon: Wind, color: '#22c55e', bg: '#dcfce7' },
-  ];
+  const displayedCategories = communityCategories.length > 0 
+    ? communityCategories.slice(0, 5) 
+    : ['Mindfulness', 'Fitness', 'Productivity', 'Health', 'Social'];
+
+  const filteredRecommendations = communityHabits.length > 0
+    ? communityHabits.filter(h => h.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [
+        { id: 'rec1', name: 'Read for 20 mins', category: 'Productivity', activeCount: '4.2K', color: '#f97316', bg: '#fff1e6' },
+        { id: 'rec2', name: 'Drink 2L Water', category: 'Health', activeCount: '8.9K', color: '#0ea5e9', bg: '#e0f2fe' },
+        { id: 'rec3', name: 'Daily Meditation', category: 'Mindfulness', activeCount: '12.4K', color: '#22c55e', bg: '#dcfce7' },
+        { id: 'rec4', name: 'Morning Yoga', category: 'Fitness', activeCount: '3.1K', color: '#ef4444', bg: '#fee2e2' },
+        { id: 'rec5', name: 'Journaling', category: 'Mindfulness', activeCount: '5.5K', color: '#8b5cf6', bg: '#ede9fe' },
+      ].filter(h => h.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const displayedRecommendations = showAllRecs 
+    ? filteredRecommendations 
+    : filteredRecommendations.slice(0, 5);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <Avatar uri={user?.photoURL} size={40} style={{ marginRight: 12 }} />
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.brandName} numberOfLines={1}>{user?.displayName || 'User'}</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.iconBtn} onPress={handleMorePress}>
-          <MoreVertical size={24} color={theme.colors.onSurface} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Library</Text>
+        <BookOpen size={24} color="#0f172a" style={styles.headerIcon} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.container} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+        }
+      >
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Search size={20} color={theme.colors.outline} style={styles.searchIcon} />
@@ -97,65 +122,76 @@ const HabitLibrary = () => {
         <Text style={styles.sectionTitle}>Popular Categories</Text>
         <Text style={styles.sectionSubtitle}>Explore by focus area</Text>
 
-        {/* Featured Mindfulness Card */}
-        <TouchableOpacity style={styles.featuredCard}>
-          <ImageBackground 
-            source={{ uri: categories[0].image }} 
-            style={styles.featuredBg}
-            imageStyle={{ borderRadius: 24 }}
-          >
-            <View style={styles.overlay}>
-              <View style={styles.popularBadge}>
-                <Text style={styles.popularBadgeText}>MOST POPULAR</Text>
+        {/* Featured Card */}
+        {displayedCategories.length > 0 && (() => {
+          const catName = displayedCategories[0];
+          const IconComp = getCategoryIcon(catName);
+          const catStyle = getCategoryStyle(catName);
+          
+          return (
+            <TouchableOpacity style={[styles.featuredCard, { backgroundColor: catStyle.bg }]}>
+              <View style={styles.featuredInner}>
+                <View style={styles.popularBadge}>
+                  <Text style={styles.popularBadgeText}>MOST POPULAR</Text>
+                </View>
+                <View style={styles.featuredRow}>
+                  <Text style={[styles.featuredTitleDark, { color: catStyle.color }]}>{catName}</Text>
+                  <IconComp size={48} color={catStyle.color} style={{ opacity: 0.8 }} />
+                </View>
               </View>
-              <Text style={styles.featuredTitle}>Mindfulness</Text>
-            </View>
-          </ImageBackground>
-        </TouchableOpacity>
+            </TouchableOpacity>
+          );
+        })()}
 
         {/* Categories Grid */}
         <View style={styles.grid}>
-          {categories.slice(1).map(cat => (
-            <TouchableOpacity key={cat.id} style={styles.gridCard}>
-              <ImageBackground 
-                source={{ uri: cat.image }} 
-                style={styles.gridBg}
-                imageStyle={{ borderRadius: 24 }}
-              >
-                <View style={styles.overlay}>
-                  <Text style={styles.gridTitle}>{cat.name}</Text>
+          {displayedCategories.slice(1).map((cat, index) => {
+            const IconComp = getCategoryIcon(cat);
+            const catStyle = getCategoryStyle(cat);
+            
+            return (
+              <TouchableOpacity key={`${cat}-${index}`} style={[styles.gridCard, { backgroundColor: catStyle.bg }]}>
+                <View style={styles.gridInner}>
+                  <IconComp size={32} color={catStyle.color} style={{ opacity: 0.8 }} />
+                  <Text style={[styles.gridTitleDark, { color: catStyle.color }]} numberOfLines={2}>{cat}</Text>
                 </View>
-              </ImageBackground>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Recommended Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recommended for You</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>SEE ALL</Text>
+          <TouchableOpacity onPress={() => setShowAllRecs(!showAllRecs)}>
+            <Text style={styles.seeAllText}>{showAllRecs ? 'SEE LESS' : 'SEE ALL'}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.recList}>
-          {recommendations.map(rec => (
-            <View key={rec.id} style={styles.recCard}>
-              <View style={[styles.recIconBox, { backgroundColor: rec.bg }]}>
-                <rec.icon size={24} color={rec.color} />
-              </View>
-              <View style={styles.recContent}>
-                <Text style={styles.recName}>{rec.name}</Text>
-                <View style={styles.activeRow}>
-                  <Flame size={12} color="#f97316" />
-                  <Text style={styles.activeText}>{rec.active}</Text>
+          {displayedRecommendations.map(rec => {
+            const IconComp = getCategoryIcon(rec.category || '');
+            return (
+              <View key={rec.id} style={styles.recCard}>
+                <View style={[styles.recIconBox, { backgroundColor: rec.bg || '#f1f5f9' }]}>
+                  <IconComp size={24} color={rec.color || theme.colors.primary} />
                 </View>
+                <View style={styles.recContent}>
+                  <Text style={styles.recName}>{rec.name}</Text>
+                  <View style={styles.activeRow}>
+                    <Flame size={12} color="#f97316" />
+                    <Text style={styles.activeText}>{rec.activeCount || 'NEW'} ACTIVE</Text>
+                  </View>
+                </View>
+                <TouchableOpacity 
+                  style={styles.addBtn}
+                  onPress={() => handleAddCommunityHabit(rec)}
+                >
+                  <Plus size={24} color="#ffffff" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.addBtn}>
-                <Plus size={24} color="#ffffff" />
-              </TouchableOpacity>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Custom Habit Button */}
@@ -184,34 +220,20 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
     backgroundColor: '#ffffff',
   },
-  userInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginRight: 12,
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  brandName: {
+  headerTitle: {
     ...theme.typography.headlineMd,
-    color: theme.colors.onSurface,
+    fontSize: 18,
+    color: '#0f172a',
   },
-  iconBtn: {
-    padding: 8,
+  headerIcon: {
+    position: 'absolute',
+    right: 20,
   },
   container: {
     padding: 20,
@@ -251,35 +273,41 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 180,
     marginBottom: 16,
-  },
-  featuredBg: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 24,
-    padding: 20,
-    justifyContent: 'flex-end',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  featuredInner: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'space-between',
+  },
+  featuredRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  featuredTitleDark: {
+    ...theme.typography.headlineLg,
+    fontSize: 28,
+    flex: 1,
+    marginRight: 16,
   },
   popularBadge: {
-    backgroundColor: 'rgba(21, 128, 61, 0.8)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
     alignSelf: 'flex-start',
-    marginBottom: 8,
   },
   popularBadgeText: {
-    color: '#ffffff',
+    color: '#0f172a',
     fontSize: 10,
-    fontWeight: '700',
-  },
-  featuredTitle: {
-    ...theme.typography.headlineLg,
-    color: '#ffffff',
-    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   grid: {
     flexDirection: 'row',
@@ -291,15 +319,23 @@ const styles = StyleSheet.create({
     width: '48%',
     height: 140,
     marginBottom: 16,
+    borderRadius: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
   },
-  gridBg: {
+  gridInner: {
     flex: 1,
-    justifyContent: 'flex-end',
+    padding: 20,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  gridTitle: {
+  gridTitleDark: {
     ...theme.typography.headlineMd,
-    color: '#ffffff',
-    fontSize: 22,
+    fontSize: 18,
+    marginTop: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -377,3 +413,4 @@ const styles = StyleSheet.create({
 });
 
 export default HabitLibrary;
+

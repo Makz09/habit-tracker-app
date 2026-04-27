@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Lock, User, ArrowRight, ChevronLeft } from 'lucide-react-native';
+import { Mail, Lock, User, ArrowRight, ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,6 +9,7 @@ const Register = ({ navigation }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
@@ -22,7 +23,17 @@ const Register = ({ navigation }) => {
     try {
       await register(email, password, name);
     } catch (error) {
-      Alert.alert('Registration Failed', error.message);
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email is already in use. Please sign in instead.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Your password is too weak. It must be at least 6 characters long.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      Alert.alert('Registration Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -38,7 +49,7 @@ const Register = ({ navigation }) => {
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
         >
-          <ChevronLeft size={24} color={theme.colors.onSurface} />
+          <ChevronLeft size={24} color="#0f172a" />
         </TouchableOpacity>
 
         <View style={styles.header}>
@@ -78,9 +89,16 @@ const Register = ({ navigation }) => {
               placeholder="Password"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               placeholderTextColor="#94a3b8"
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+              {showPassword ? (
+                <EyeOff size={20} color="#94a3b8" />
+              ) : (
+                <Eye size={20} color="#94a3b8" />
+              )}
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
@@ -120,10 +138,10 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#f8fafc',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
@@ -188,8 +206,10 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 48,
   },
+
   footerText: {
     ...theme.typography.bodyMd,
     color: '#64748b',

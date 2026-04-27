@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { CheckCircle2, Compass, Calendar, BarChart3 } from 'lucide-react-native';
+import { Home, BookOpen, Calendar, BarChart3, Settings } from 'lucide-react-native';
 import { theme } from '../theme';
 
 import { useAuth } from '../context/AuthContext';
@@ -11,9 +11,13 @@ import Dashboard from '../screens/Dashboard';
 import HabitLibrary from '../screens/HabitLibrary';
 import History from '../screens/History';
 import Statistics from '../screens/Statistics';
+import Options from '../screens/Options';
+import AccountDetails from '../screens/AccountDetails';
 import HabitDetail from '../screens/HabitDetail';
 import Login from '../screens/Login';
 import Register from '../screens/Register';
+import SettingsDetail from '../screens/SettingsDetail';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -34,9 +38,21 @@ const DashboardStack = () => {
   );
 };
 
+const OptionsStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="OptionsMain" component={Options} />
+      <Stack.Screen name="AccountDetails" component={AccountDetails} />
+      <Stack.Screen name="SettingsDetail" component={SettingsDetail} />
+    </Stack.Navigator>
+
+  );
+};
+
 const MainTabs = () => {
   return (
     <Tab.Navigator
+      initialRouteName="Home"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -60,23 +76,12 @@ const MainTabs = () => {
       }}
     >
       <Tab.Screen
-        name="Today"
-        component={DashboardStack}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <View style={[styles.activeIconContainer, focused && styles.activeIconBg]}>
-              <CheckCircle2 color={color} size={size} />
-            </View>
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Library"
         component={HabitLibrary}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
             <View style={[styles.activeIconContainer, focused && styles.activeIconBg]}>
-              <Compass color={color} size={size} />
+              <BookOpen color={color} size={size} />
             </View>
           ),
         }}
@@ -93,12 +98,34 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
+        name="Home"
+        component={DashboardStack}
+        options={{
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[styles.activeIconContainer, focused && styles.activeIconBg]}>
+              <Home color={color} size={size} />
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
         name="Stats"
         component={Statistics}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
             <View style={[styles.activeIconContainer, focused && styles.activeIconBg]}>
               <BarChart3 color={color} size={size} />
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Options"
+        component={OptionsStack}
+        options={{
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[styles.activeIconContainer, focused && styles.activeIconBg]}>
+              <Settings color={color} size={size} />
             </View>
           ),
         }}

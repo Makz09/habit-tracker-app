@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Svg, Circle } from 'react-native-svg';
 import { theme } from '../theme';
 import HabitCard from '../components/habit/HabitCard';
 import { useHabits } from '../context/HabitContext';
-import { Plus, Flame, Droplets, MoreVertical } from 'lucide-react-native';
+import { Plus, Flame, Droplets, MoreVertical, Home } from 'lucide-react-native';
 import AddHabitModal from '../components/habit/AddHabitModal';
 import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/common/Avatar';
@@ -15,26 +15,20 @@ const Dashboard = ({ navigation }) => {
   const { user, logout, loading: authLoading } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
   const [timeRange, setTimeRange] = useState('daily'); // 'daily', 'weekly', 'monthly', 'yearly'
+  const [showAllStreaks, setShowAllStreaks] = useState(false);
+  const [habitsLimit, setHabitsLimit] = useState(5);
+  const [refreshing, setRefreshing] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
-  const handleMorePress = () => {
-    Alert.alert(
-      "Account Settings",
-      `Signed in as ${user?.email}`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Sign Out", onPress: handleLogout, style: "destructive" }
-      ]
-    );
-  };
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // Firestore sync is already real-time, but we can simulate a manual fetch
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1500);
+  }, []);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error("Logout failed: ", error);
-    }
-  };
+
 
   const isHabitCompletedToday = (habit) => habit.completedDays?.includes(today) || false;
 
@@ -90,19 +84,16 @@ const Dashboard = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.userInfo}>
-            <Avatar uri={user?.photoURL} size={44} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={styles.brandName} numberOfLines={1}>{user?.displayName || 'User'}</Text>
-            </View>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleMorePress}>
-              <MoreVertical size={24} color={theme.colors.onSurface} />
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Home</Text>
+        <Home size={24} color="#0f172a" style={styles.headerIcon} />
+      </View>
+      <ScrollView 
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+        }
+      >
 
         {/* Greeting & Quote */}
         <View style={styles.greetingSection}>
@@ -165,8 +156,8 @@ const Dashboard = ({ navigation }) => {
         {/* Streaks Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your Streaks</Text>
-          <TouchableOpacity>
-            <Text style={styles.viewAllText}>View All</Text>
+          <TouchableOpacity onPress={() => setShowAllStreaks(!showAllStreaks)}>
+            <Text style={styles.viewAllText}>{showAllStreaks ? 'View Less' : 'View All'}</Text>
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.streaksContainer}>
@@ -176,7 +167,7 @@ const Dashboard = ({ navigation }) => {
               <Text style={styles.streakDays}>Start a habit!</Text>
             </View>
           ) : (
-            habits.slice(0, 3).map(habit => (
+            habits.slice(0, showAllStreaks ? undefined : 3).map(habit => (
               <TouchableOpacity 
                 key={habit.id} 
                 style={styles.streakCard}
@@ -198,13 +189,28 @@ const Dashboard = ({ navigation }) => {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Today's Habits</Text>
         </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.limitSelector}>
+          {[5, 10, 15, 20, 25, 'All'].map(limit => (
+            <TouchableOpacity 
+              key={limit}
+              style={[styles.limitChip, habitsLimit === limit && styles.activeLimitChip]}
+              onPress={() => setHabitsLimit(limit)}
+            >
+              <Text style={[styles.limitText, habitsLimit === limit && styles.activeLimitText]}>
+                {limit}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         <View style={styles.habitsList}>
           {habits.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>No habits for today. Start fresh!</Text>
             </View>
           ) : (
-            habits.map(habit => (
+            habits.slice(0, habitsLimit === 'All' ? undefined : habitsLimit).map(habit => (
               <HabitCard
                 key={habit.id}
                 name={habit.name}
@@ -244,34 +250,20 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#ffffff',
   },
-  userInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-    marginRight: theme.spacing.sm,
-    borderWidth: 2,
-    borderColor: '#ffffff',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  brandName: {
+  headerTitle: {
     ...theme.typography.headlineMd,
-    color: theme.colors.onSurface,
+    fontSize: 18,
+    color: '#0f172a',
   },
-  iconBtn: {
-    padding: 8,
+  headerIcon: {
+    position: 'absolute',
+    right: 20,
   },
   greetingSection: {
     marginBottom: theme.spacing.md,
@@ -425,6 +417,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
+  },
+  limitSelector: {
+    marginBottom: theme.spacing.md,
+  },
+  limitChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: theme.colors.surfaceContainerLow,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+  },
+  activeLimitChip: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  limitText: {
+    ...theme.typography.labelBold,
+    color: theme.colors.onSurfaceVariant,
+    fontSize: 12,
+  },
+  activeLimitText: {
+    color: '#ffffff',
   },
 });
 

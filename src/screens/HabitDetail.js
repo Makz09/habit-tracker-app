@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MoreVertical, Flame, Check, Clock, Leaf } from 'lucide-react-native';
+import { ChevronLeft, MoreVertical, Flame, Check, Clock, Leaf } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useHabits } from '../context/HabitContext';
 
@@ -41,6 +41,65 @@ const HabitDetail = ({ route, navigation }) => {
 
   const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   
+  // Calculate longest streak from completedDays
+  const getLongestStreak = () => {
+    const completed = habit.completedDays || [];
+    if (completed.length === 0) return { length: 0, endDate: null };
+
+    // Sort dates chronologically
+    const sorted = [...completed].sort();
+    
+    let longest = 1;
+    let longestEnd = sorted[0];
+    let current = 1;
+    let currentEnd = sorted[0];
+
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = new Date(sorted[i - 1]);
+      const curr = new Date(sorted[i]);
+      const diffMs = curr.getTime() - prev.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        current++;
+        currentEnd = sorted[i];
+      } else if (diffDays > 1) {
+        current = 1;
+        currentEnd = sorted[i];
+      }
+      // diffDays === 0 means duplicate, skip
+
+      if (current > longest) {
+        longest = current;
+        longestEnd = currentEnd;
+      }
+    }
+
+    return { length: longest, endDate: longestEnd };
+  };
+
+  const longestStreak = getLongestStreak();
+
+  // Format the date when the longest streak was achieved
+  const getLongestStreakLabel = () => {
+    if (!longestStreak.endDate) return 'No data yet';
+    const date = new Date(longestStreak.endDate);
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `Achieved in ${month} ${year}`;
+  };
+
+  // Dynamic status message based on current streak
+  const getStreakStatus = () => {
+    const streak = habit.streak || 0;
+    if (streak === 0) return 'Start your streak today!';
+    if (streak < 3) return 'Heating up!';
+    if (streak < 7) return 'On a roll!';
+    if (streak < 14) return 'Unstoppable!';
+    if (streak < 30) return 'Legendary streak!';
+    return 'Hall of Fame! 🏆';
+  };
+
   // Logic to determine which days were completed this week
   const getWeeklyStats = () => {
     const stats = [];
@@ -71,8 +130,8 @@ const HabitDetail = ({ route, navigation }) => {
     <SafeAreaView style={styles.safeArea}>
       {/* Custom Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-          <ArrowLeft color={theme.colors.onSurface} size={24} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <ChevronLeft size={24} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{habit.name}</Text>
         <TouchableOpacity style={styles.iconBtn} onPress={handleDelete}>
@@ -86,11 +145,12 @@ const HabitDetail = ({ route, navigation }) => {
         <View style={styles.statsCard}>
           <Text style={styles.cardLabel}>CURRENT STREAK</Text>
           <View style={styles.streakRow}>
-            <Text style={styles.streakNumber}>{habit.streak || 0} <Text style={styles.streakUnit}>days</Text></Text>
+            <Text style={styles.streakNumber}>{habit.streak || 0}</Text>
+            <Text style={styles.streakUnit}> days</Text>
           </View>
           <View style={styles.statusRow}>
             <Flame size={16} color={theme.colors.primary} />
-            <Text style={styles.statusText}>Heating up!</Text>
+            <Text style={styles.statusText}>{getStreakStatus()}</Text>
           </View>
         </View>
 
@@ -98,10 +158,12 @@ const HabitDetail = ({ route, navigation }) => {
         <View style={styles.statsCard}>
           <Text style={styles.cardLabel}>LONGEST STREAK</Text>
           <View style={styles.streakRow}>
-            <Text style={[styles.streakNumber, { color: '#f97316' }]}>24 <Text style={styles.streakUnit}>days</Text></Text>
+            <Text style={[styles.streakNumber, { color: '#f97316' }]}>{longestStreak.length}</Text>
+            <Text style={styles.streakUnit}> days</Text>
           </View>
-          <Text style={styles.achievedText}>Achieved in Oct 2023</Text>
+          <Text style={styles.achievedText}>{getLongestStreakLabel()}</Text>
         </View>
+
 
         {/* Weekly Consistency Card */}
         <View style={styles.whiteCard}>
@@ -192,6 +254,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#ffffff',
   },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+  },
   iconBtn: {
     padding: 8,
   },
@@ -231,11 +301,14 @@ const styles = StyleSheet.create({
     ...theme.typography.displayXl,
     fontSize: 44,
     color: theme.colors.primary,
+    lineHeight: undefined, // Let baseline alignment handle it
   },
   streakUnit: {
     ...theme.typography.headlineMd,
     fontSize: 24,
     color: '#94a3b8',
+    lineHeight: undefined, // Let baseline alignment handle it
+    marginLeft: 6,
   },
   statusRow: {
     flexDirection: 'row',

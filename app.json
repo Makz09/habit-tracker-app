@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "HabitTrackerApp",
+    "name": "Habit Tracker",
     "slug": "HabitTrackerApp",
-    "version": "1.0.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -20,13 +20,29 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.HabitTrackerApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you set a profile picture."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "ndkVersion": "26.3.11579264"
+          }
+        }
+      ]
     ]
   }
 }
