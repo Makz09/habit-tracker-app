@@ -21,6 +21,15 @@ A premium, high-fidelity habit tracking mobile application built with **React Na
   - Pull-to-refresh functionality for seamless updates.
 - **Automated Versioning**: Version numbers are automatically synced from GitHub git tags.
 
+## 🔄 App Workflow & Process
+
+1. **User Onboarding**: Secure registration and login flow using Firebase Authentication.
+2. **Dashboard Overview**: The main hub displaying active habits, current streaks, and daily progress at a glance.
+3. **Habit Creation & Management**: Users can create custom habits or choose from predefined templates in the Habit Library.
+4. **Daily Tracking**: Users interact with the app daily to mark habits as complete, which updates their streaks and historical data in real-time.
+5. **Analytics & Insights**: A dedicated statistics screen provides visual heatmaps, completion rates, and milestone tracking to visualize long-term consistency.
+6. **Profile & Settings**: Users can manage their account details, set a custom profile picture (stored as Base64 in Firestore), and export their tracking data.
+
 ## 🛠️ Tech Stack
 
 - **Framework**: [Expo](https://expo.dev/) (SDK 54) / React Native
@@ -52,8 +61,13 @@ A premium, high-fidelity habit tracking mobile application built with **React Na
    ```
 
 3. **Configure Firebase**
-   - Create a Firebase project in the [Firebase Console](https://console.firebase.google.com/).
-   - Add your web/android app credentials to `src/config/firebase.js`.
+   - Create a new project in the [Firebase Console](https://console.firebase.google.com/).
+   - **Authentication**: Enable **Email/Password** sign-in method under `Authentication > Sign-in method`.
+   - **Firestore Database**: Create a Firestore Database.
+     - Update the Security Rules using the contents of the `firestore.rules` file.
+     - Note: Composite indexes might be required for some queries. You can deploy them using the `firestore.indexes.json` file or simply click the links generated in the console logs when an index error occurs.
+   - **Firebase Storage**: Enable Storage (optional, if you plan to move away from Base64 image storage).
+   - **Credentials**: Register a Web App in your Firebase project settings and replace the `firebaseConfig` object in `src/config/firebase.js` with your own project credentials.
 
 4. **Run the application**
    ```bash
