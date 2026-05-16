@@ -2,7 +2,7 @@
   "expo": {
     "name": "Habit Tracker",
     "slug": "HabitTrackerApp",
-    "version": "1.1.1",
+    "version": "1.2.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -46,7 +46,8 @@
       [
         "./scripts/withNdkVersion.js",
         "26.3.11579264"
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

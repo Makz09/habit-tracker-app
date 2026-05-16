@@ -34,7 +34,11 @@ const Dashboard = ({ navigation }) => {
 
   // Progress Calculation Logic
   const calculateProgress = () => {
-    if (habits.length === 0) return { percent: 0, text: 'No habits yet', label: 'DAILY PROGRESS' };
+    const completedToday = habits.filter(isHabitCompletedToday).length;
+    const totalHabits = habits.length;
+    const pendingHabits = totalHabits - completedToday;
+
+    if (totalHabits === 0) return { percent: 0, text: 'No habits yet', label: 'DAILY PROGRESS', total: 0, completed: 0, pending: 0 };
 
     const now = new Date();
     let daysCount = 1;
@@ -52,12 +56,14 @@ const Dashboard = ({ navigation }) => {
     }
 
     if (timeRange === 'daily') {
-      const completedCount = habits.filter(isHabitCompletedToday).length;
-      const progress = completedCount / habits.length;
+      const progress = completedToday / totalHabits;
       return { 
         percent: Math.round(progress * 100), 
-        text: `${completedCount} of ${habits.length} habits done`,
-        label
+        text: `${completedToday} of ${totalHabits} habits done`,
+        label,
+        total: totalHabits,
+        completed: completedToday,
+        pending: pendingHabits
       };
     }
 
@@ -70,13 +76,16 @@ const Dashboard = ({ navigation }) => {
       totalCompletions += completionsInRange;
     });
 
-    const totalPossible = habits.length * daysCount;
+    const totalPossible = totalHabits * daysCount;
     const progress = totalCompletions / totalPossible;
     
     return { 
       percent: Math.round(progress * 100), 
       text: `${totalCompletions} completions this ${timeRange.replace('ly', '')}`,
-      label
+      label,
+      total: totalHabits,
+      completed: completedToday, // For daily counter
+      pending: pendingHabits
     };
   };
 
@@ -118,12 +127,28 @@ const Dashboard = ({ navigation }) => {
           ))}
         </View>
 
+        {/* Dashboard Stats Summary */}
+        <View style={styles.statsSummaryRow}>
+          <View style={[styles.statBox, { backgroundColor: '#eff6ff' }]}>
+            <Text style={[styles.statNumber, { color: '#3b82f6' }]}>{progressData.total}</Text>
+            <Text style={styles.statLabelSmall}>TOTAL</Text>
+          </View>
+          <View style={[styles.statBox, { backgroundColor: '#f0fdf4' }]}>
+            <Text style={[styles.statNumber, { color: '#22c55e' }]}>{progressData.completed}</Text>
+            <Text style={styles.statLabelSmall}>COMPLETED</Text>
+          </View>
+          <View style={[styles.statBox, { backgroundColor: '#fef2f2' }]}>
+            <Text style={[styles.statNumber, { color: '#ef4444' }]}>{progressData.pending}</Text>
+            <Text style={styles.statLabelSmall}>PENDING</Text>
+          </View>
+        </View>
+
         {/* Dynamic Progress Card */}
         <View style={styles.progressCard}>
           <View style={styles.progressTextSection}>
             <Text style={styles.progressLabel}>{progressData.label}</Text>
-            <Text style={styles.progressValue}>{progressData.text}</Text>
-            <Text style={styles.progressSubtext}>You're doing great! Keep it up.</Text>
+            <Text style={styles.progressValue}>{progressData.percent}% Complete</Text>
+            <Text style={styles.progressSubtext}>{progressData.text}</Text>
           </View>
           <View style={styles.progressCircleContainer}>
             <Svg width="80" height="80" viewBox="0 0 100 100">
@@ -302,6 +327,29 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyMd,
     color: theme.colors.onSurfaceVariant,
     fontStyle: 'italic',
+  },
+  statsSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: theme.spacing.lg,
+  },
+  statBox: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 16,
+    alignItems: 'center',
+    elevation: 1,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  statLabelSmall: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748b',
+    marginTop: 2,
   },
   progressCard: {
     backgroundColor: theme.colors.surfaceContainerLowest,

@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, MoreVertical, Flame, Check, Clock, Leaf } from 'lucide-react-native';
+import { ChevronLeft, MoreVertical, Flame, Check, Clock, Leaf, Target, Edit3, Trash2 } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useHabits } from '../context/HabitContext';
+import AddHabitModal from '../components/habit/AddHabitModal';
 
 const HabitDetail = ({ route, navigation }) => {
   const { habitId } = route.params;
   const { habits, deleteHabit } = useHabits();
+  const [modalVisible, setModalVisible] = useState(false);
   
   const habit = habits.find(h => h.id === habitId);
 
@@ -134,12 +136,34 @@ const HabitDetail = ({ route, navigation }) => {
           <ChevronLeft size={24} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{habit.name}</Text>
-        <TouchableOpacity style={styles.iconBtn} onPress={handleDelete}>
-          <MoreVertical color={theme.colors.onSurface} size={24} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setModalVisible(true)}>
+            <Edit3 color={theme.colors.primary} size={22} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleDelete}>
+            <Trash2 color="#ef4444" size={22} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        
+        {/* Target Card (New) */}
+        {habit.target && (
+          <View style={[styles.statsCard, { backgroundColor: '#f0fdf4', borderColor: '#dcfce7', borderWidth: 1 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ backgroundColor: '#ffffff', padding: 10, borderRadius: 12 }}>
+                <Target size={24} color="#15803d" />
+              </View>
+              <View>
+                <Text style={[styles.cardLabel, { marginBottom: 0 }]}>DAILY TARGET</Text>
+                <Text style={[styles.streakNumber, { fontSize: 24, color: '#15803d' }]}>
+                  {habit.target} <Text style={{ fontSize: 16 }}>{habit.targetUnit}</Text>
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
         
         {/* Current Streak Card */}
         <View style={styles.statsCard}>
@@ -237,6 +261,12 @@ const HabitDetail = ({ route, navigation }) => {
         </View>
 
       </ScrollView>
+
+      <AddHabitModal 
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        habit={habit}
+      />
     </SafeAreaView>
   );
 };
@@ -261,6 +291,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 20,
     backgroundColor: '#f1f5f9',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   iconBtn: {
     padding: 8,

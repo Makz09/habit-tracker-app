@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -14,11 +14,16 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { theme } from './src/theme';
 import { HabitProvider } from './src/context/HabitContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { requestPermissions } from './src/utils/notifications';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
+  useEffect(() => {
+    requestPermissions();
+  }, []);
+
   const [fontsLoaded, fontError] = useFonts({
     Lexend_600SemiBold,
     Lexend_700Bold,

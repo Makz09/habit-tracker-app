@@ -130,16 +130,18 @@ export const HabitProvider = ({ children }) => {
   };
 
   const addHabit = async (habitData) => {
-    if (!user) return;
+    if (!user) return null;
     try {
-      await addDoc(collection(db, 'users', user.uid, 'habits'), {
+      const docRef = await addDoc(collection(db, 'users', user.uid, 'habits'), {
         ...habitData,
         streak: 0,
         completedDays: [],
         createdAt: new Date().toISOString(),
       });
+      return docRef.id;
     } catch (error) {
       console.error("Error adding habit: ", error);
+      return null;
     }
   };
 
@@ -197,6 +199,19 @@ export const HabitProvider = ({ children }) => {
     }
   };
 
+  const updateHabit = async (habitId, updatedData) => {
+    if (!user) return;
+    try {
+      const habitRef = doc(db, 'users', user.uid, 'habits', habitId);
+      await updateDoc(habitRef, {
+        ...updatedData,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error updating habit: ", error);
+    }
+  };
+
   return (
     <HabitContext.Provider value={{ 
       habits, 
@@ -206,6 +221,7 @@ export const HabitProvider = ({ children }) => {
       addCommunityHabit,
       toggleHabit, 
       deleteHabit, 
+      updateHabit,
       loading,
       customCategories,
       defaultCategories,
