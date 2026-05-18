@@ -1,25 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Check, Flame, Book, Dumbbell, Droplets } from 'lucide-react-native';
+import { Check, Flame } from 'lucide-react-native';
 import { theme } from '../../theme';
+import { getHabitDisplay } from '../../utils/helpers';
 
-const HabitCard = ({ name, streak, completed, onToggle, onPress }) => {
-  // Map names to icons (mock logic for demo)
-  const getIcon = () => {
-    const n = name.toLowerCase();
-    if (n.includes('read')) return <Book size={24} color={theme.colors.secondary} />;
-    if (n.includes('medit')) return <Flame size={24} color="#f97316" />;
-    if (n.includes('workout') || n.includes('exercise')) return <Dumbbell size={24} color="#6366f1" />;
-    return <Droplets size={24} color="#0ea5e9" />;
-  };
-
-  const getIconBg = () => {
-    const n = name.toLowerCase();
-    if (n.includes('read')) return '#e0f2fe';
-    if (n.includes('medit')) return '#fff1e6';
-    if (n.includes('workout') || n.includes('exercise')) return '#e0e7ff';
-    return '#f0f9ff';
-  };
+const HabitCard = ({ name, category, streak, completed, onToggle, onPress }) => {
+  const display = getHabitDisplay(name, category);
+  const IconComp = display.icon;
 
   return (
     <TouchableOpacity 
@@ -27,8 +14,8 @@ const HabitCard = ({ name, streak, completed, onToggle, onPress }) => {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconContainer, { backgroundColor: getIconBg() }]}>
-        {getIcon()}
+      <View style={[styles.iconContainer, { backgroundColor: display.lightBg }]}>
+        <IconComp size={24} color={display.bg} />
       </View>
       
       <View style={styles.content}>

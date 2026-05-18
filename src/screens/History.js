@@ -3,19 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, 
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
-import { Calendar, Droplets, BookOpen, Activity, Heart, Brain, Users, Layout, Sparkles, Dumbbell, TrendingUp } from 'lucide-react-native';
+import { Calendar, History as HistoryIcon, Droplets, BookOpen, Activity, Heart, Brain, Users, Layout, Sparkles, Dumbbell, TrendingUp } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useHabits } from '../context/HabitContext';
-
-const getCategoryStyle = (catName) => {
-  const name = catName?.toLowerCase() || '';
-  if (name.includes('health') || name.includes('medical') || name.includes('water') || name.includes('hydrate')) return { bg: '#22c55e', color: '#ffffff', icon: Droplets, lightBg: '#dcfce7', darkColor: '#166534' };
-  if (name.includes('work') || name.includes('product') || name.includes('deep work')) return { bg: '#3b82f6', color: '#ffffff', icon: Layout, lightBg: '#dbeafe', darkColor: '#1e40af' };
-  if (name.includes('mind') || name.includes('mental') || name.includes('meditation')) return { bg: '#f97316', color: '#ffffff', icon: Brain, lightBg: '#ffedd5', darkColor: '#9a3412' };
-  if (name.includes('fitness') || name.includes('exercise') || name.includes('weight')) return { bg: '#8b5cf6', color: '#ffffff', icon: Dumbbell, lightBg: '#f3e8ff', darkColor: '#5b21b6' };
-  
-  return { bg: '#0ea5e9', color: '#ffffff', icon: Sparkles, lightBg: '#e0f2fe', darkColor: '#075985' };
-};
+import { getHabitDisplay } from '../utils/helpers';
 
 const generateHabitPhrase = (name, dateString) => {
   const n = (name || '').toLowerCase();
@@ -126,12 +117,16 @@ const History = () => {
   const { habits } = useHabits();
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Generate week dates (Past 6 days + Today)
+  // Generate week dates (Sunday to Saturday of the current week)
   const weekDates = useMemo(() => {
     const dates = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+    const today = new Date();
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - today.getDay());
+    
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
       dates.push(d);
     }
     return dates;
@@ -157,16 +152,19 @@ const History = () => {
   };
 
   const getWeekNumber = (date) => {
-    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
-    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const pastDaysOfMonth = date.getDate();
+    const firstDayWeekday = firstDayOfMonth.getDay();
+    
+    const weekNum = Math.ceil((pastDaysOfMonth + firstDayWeekday) / 7);
+    return weekNum.toString().padStart(2, '0');
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
+        <HistoryIcon size={24} color="#0f172a" style={styles.calendarIcon} />
         <Text style={styles.headerTitle}>History</Text>
-        <Calendar size={24} color="#0f172a" style={styles.calendarIcon} />
       </View>
 
       <ScrollView 
@@ -234,8 +232,8 @@ const History = () => {
             </View>
           ) : (
             completedToday.map((habit, index) => {
-              const styleObj = getCategoryStyle(habit.category || habit.name);
-              const IconComp = styleObj.icon;
+              const display = getHabitDisplay(habit.name, habit.category);
+              const IconComp = display.icon;
               
               return (
                 <View key={habit.id} style={styles.timelineItem}>
@@ -243,8 +241,8 @@ const History = () => {
                   {index !== completedToday.length - 1 && <View style={styles.timelineLine} />}
                   
                   {/* Timeline Node */}
-                  <View style={[styles.timelineNode, { backgroundColor: styleObj.bg }]}>
-                    <IconComp size={16} color={styleObj.color} />
+                  <View style={[styles.timelineNode, { backgroundColor: display.bg }]}>
+                    <IconComp size={16} color={display.color} />
                   </View>
                   
                   {/* Card Content */}
@@ -260,8 +258,8 @@ const History = () => {
                     </Text>
                     
                     <View style={styles.tagsRow}>
-                      <View style={[styles.tag, { backgroundColor: styleObj.lightBg }]}>
-                        <Text style={[styles.tagText, { color: styleObj.darkColor }]}>
+                      <View style={[styles.tag, { backgroundColor: display.lightBg }]}>
+                        <Text style={[styles.tagText, { color: display.darkColor }]}>
                           {(habit.category || 'GENERAL').toUpperCase()}
                         </Text>
                       </View>
@@ -305,6 +303,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#ffffff',
+    gap: 8,
   },
   headerTitle: {
     ...theme.typography.headlineMd,
@@ -312,8 +311,6 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   calendarIcon: {
-    position: 'absolute',
-    right: 20,
   },
   dateHeaderRow: {
     flexDirection: 'row',

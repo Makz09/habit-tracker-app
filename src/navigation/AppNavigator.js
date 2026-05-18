@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Home, BookOpen, Calendar, BarChart3, Settings } from 'lucide-react-native';
+import { Home, Library, History as HistoryIcon, BarChart3, Settings } from 'lucide-react-native';
 import { theme } from '../theme';
 
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +17,7 @@ import HabitDetail from '../screens/HabitDetail';
 import Login from '../screens/Login';
 import Register from '../screens/Register';
 import SettingsDetail from '../screens/SettingsDetail';
+import Leaderboard from '../screens/Leaderboard';
 
 
 const Tab = createBottomTabNavigator();
@@ -46,6 +47,15 @@ const OptionsStack = () => {
       <Stack.Screen name="SettingsDetail" component={SettingsDetail} />
     </Stack.Navigator>
 
+  );
+};
+
+const StatsStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="StatisticsMain" component={Statistics} />
+      <Stack.Screen name="Leaderboard" component={Leaderboard} />
+    </Stack.Navigator>
   );
 };
 
@@ -81,7 +91,7 @@ const MainTabs = () => {
         options={{
           tabBarIcon: ({ color, size, focused }) => (
             <View style={[styles.activeIconContainer, focused && styles.activeIconBg]}>
-              <BookOpen color={color} size={size} />
+              <Library color={color} size={size} />
             </View>
           ),
         }}
@@ -92,7 +102,7 @@ const MainTabs = () => {
         options={{
           tabBarIcon: ({ color, size, focused }) => (
             <View style={[styles.activeIconContainer, focused && styles.activeIconBg]}>
-              <Calendar color={color} size={size} />
+              <HistoryIcon color={color} size={size} />
             </View>
           ),
         }}
@@ -110,7 +120,7 @@ const MainTabs = () => {
       />
       <Tab.Screen
         name="Stats"
-        component={Statistics}
+        component={StatsStack}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
             <View style={[styles.activeIconContainer, focused && styles.activeIconBg]}>

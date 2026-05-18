@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, ImageBackground, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Bell, Plus, BookOpen, Droplets, Wind, PencilLine, Flame, MoreVertical, Layout, Heart, Brain, Users, Sparkles, Activity } from 'lucide-react-native';
+import { Search, Bell, Plus, Library, Droplets, Wind, PencilLine, Flame, MoreVertical, Layout, Heart, Brain, Users, Sparkles, Activity } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { useHabits } from '../context/HabitContext';
 import AddHabitModal from '../components/habit/AddHabitModal';
 import Avatar from '../components/common/Avatar';
+import { getHabitDisplay } from '../utils/helpers';
 
 const HabitLibrary = () => {
   const { user, logout } = useAuth();
@@ -14,6 +15,7 @@ const HabitLibrary = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllRecs, setShowAllRecs] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = React.useCallback(() => {
@@ -78,15 +80,11 @@ const HabitLibrary = () => {
     ? communityCategories.slice(0, 5) 
     : ['Mindfulness', 'Fitness', 'Productivity', 'Health', 'Social'];
 
-  const filteredRecommendations = communityHabits.length > 0
-    ? communityHabits.filter(h => h.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : [
-        { id: 'rec1', name: 'Read for 20 mins', category: 'Productivity', activeCount: '4.2K', color: '#f97316', bg: '#fff1e6' },
-        { id: 'rec2', name: 'Drink 2L Water', category: 'Health', activeCount: '8.9K', color: '#0ea5e9', bg: '#e0f2fe' },
-        { id: 'rec3', name: 'Daily Meditation', category: 'Mindfulness', activeCount: '12.4K', color: '#22c55e', bg: '#dcfce7' },
-        { id: 'rec4', name: 'Morning Yoga', category: 'Fitness', activeCount: '3.1K', color: '#ef4444', bg: '#fee2e2' },
-        { id: 'rec5', name: 'Journaling', category: 'Mindfulness', activeCount: '5.5K', color: '#8b5cf6', bg: '#ede9fe' },
-      ].filter(h => h.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredRecommendations = communityHabits.filter(h => {
+    const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory ? h.category === selectedCategory : true;
+    return matchesSearch && matchesCategory;
+  });
 
   const displayedRecommendations = showAllRecs 
     ? filteredRecommendations 
@@ -95,8 +93,8 @@ const HabitLibrary = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
+        <Library size={24} color="#0f172a" style={styles.headerIcon} />
         <Text style={styles.headerTitle}>Library</Text>
-        <BookOpen size={24} color="#0f172a" style={styles.headerIcon} />
       </View>
 
       <ScrollView 
@@ -125,18 +123,26 @@ const HabitLibrary = () => {
         {/* Featured Card */}
         {displayedCategories.length > 0 && (() => {
           const catName = displayedCategories[0];
-          const IconComp = getCategoryIcon(catName);
-          const catStyle = getCategoryStyle(catName);
+          const display = getHabitDisplay('', catName);
+          const IconComp = display.icon;
           
           return (
-            <TouchableOpacity style={[styles.featuredCard, { backgroundColor: catStyle.bg }]}>
+            <TouchableOpacity 
+              style={[
+                styles.featuredCard, 
+                { backgroundColor: display.lightBg },
+                selectedCategory && selectedCategory !== catName && { opacity: 0.4 }
+              ]}
+              onPress={() => setSelectedCategory(selectedCategory === catName ? null : catName)}
+              activeOpacity={0.7}
+            >
               <View style={styles.featuredInner}>
                 <View style={styles.popularBadge}>
                   <Text style={styles.popularBadgeText}>MOST POPULAR</Text>
                 </View>
                 <View style={styles.featuredRow}>
-                  <Text style={[styles.featuredTitleDark, { color: catStyle.color }]}>{catName}</Text>
-                  <IconComp size={48} color={catStyle.color} style={{ opacity: 0.8 }} />
+                  <Text style={[styles.featuredTitleDark, { color: display.darkColor }]}>{catName}</Text>
+                  <IconComp size={48} color={display.darkColor} style={{ opacity: 0.8 }} />
                 </View>
               </View>
             </TouchableOpacity>
@@ -146,14 +152,23 @@ const HabitLibrary = () => {
         {/* Categories Grid */}
         <View style={styles.grid}>
           {displayedCategories.slice(1).map((cat, index) => {
-            const IconComp = getCategoryIcon(cat);
-            const catStyle = getCategoryStyle(cat);
+            const display = getHabitDisplay('', cat);
+            const IconComp = display.icon;
             
             return (
-              <TouchableOpacity key={`${cat}-${index}`} style={[styles.gridCard, { backgroundColor: catStyle.bg }]}>
+              <TouchableOpacity 
+                key={`${cat}-${index}`} 
+                style={[
+                  styles.gridCard, 
+                  { backgroundColor: display.lightBg },
+                  selectedCategory && selectedCategory !== cat && { opacity: 0.4 }
+                ]}
+                onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.gridInner}>
-                  <IconComp size={32} color={catStyle.color} style={{ opacity: 0.8 }} />
-                  <Text style={[styles.gridTitleDark, { color: catStyle.color }]} numberOfLines={2}>{cat}</Text>
+                  <IconComp size={32} color={display.darkColor} style={{ opacity: 0.8 }} />
+                  <Text style={[styles.gridTitleDark, { color: display.darkColor }]} numberOfLines={2}>{cat}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -162,36 +177,54 @@ const HabitLibrary = () => {
 
         {/* Recommended Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recommended for You</Text>
-          <TouchableOpacity onPress={() => setShowAllRecs(!showAllRecs)}>
-            <Text style={styles.seeAllText}>{showAllRecs ? 'SEE LESS' : 'SEE ALL'}</Text>
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>
+            {selectedCategory ? `${selectedCategory} Habits` : 'Recommended for You'}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            {selectedCategory && (
+              <TouchableOpacity onPress={() => setSelectedCategory(null)}>
+                <Text style={[styles.seeAllText, { color: '#ef4444' }]}>CLEAR</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => setShowAllRecs(!showAllRecs)}>
+              <Text style={styles.seeAllText}>{showAllRecs ? 'SEE LESS' : 'SEE ALL'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.recList}>
-          {displayedRecommendations.map(rec => {
-            const IconComp = getCategoryIcon(rec.category || '');
-            return (
-              <View key={rec.id} style={styles.recCard}>
-                <View style={[styles.recIconBox, { backgroundColor: rec.bg || '#f1f5f9' }]}>
-                  <IconComp size={24} color={rec.color || theme.colors.primary} />
-                </View>
-                <View style={styles.recContent}>
-                  <Text style={styles.recName}>{rec.name}</Text>
-                  <View style={styles.activeRow}>
-                    <Flame size={12} color="#f97316" />
-                    <Text style={styles.activeText}>{rec.activeCount || 'NEW'} ACTIVE</Text>
+          {displayedRecommendations.length > 0 ? (
+            displayedRecommendations.map(rec => {
+              const display = getHabitDisplay(rec.name, rec.category);
+              const IconComp = display.icon;
+              return (
+                <View key={rec.id} style={styles.recCard}>
+                  <View style={[styles.recIconBox, { backgroundColor: display.lightBg }]}>
+                    <IconComp size={24} color={display.darkColor} />
                   </View>
+                  <View style={styles.recContent}>
+                    <Text style={styles.recName}>{rec.name}</Text>
+                    <View style={styles.activeRow}>
+                      <Flame size={12} color="#f97316" />
+                      <Text style={styles.activeText}>{rec.activeCount || 'NEW'} ACTIVE</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.addBtn}
+                    onPress={() => handleAddCommunityHabit(rec)}
+                  >
+                    <Plus size={24} color="#ffffff" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
-                  style={styles.addBtn}
-                  onPress={() => handleAddCommunityHabit(rec)}
-                >
-                  <Plus size={24} color="#ffffff" />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+              );
+            })
+          ) : (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: '#64748b', ...theme.typography.bodyMd, textAlign: 'center' }}>
+                {searchQuery ? "No habits match your search." : "No recommendations available. Create a custom habit!"}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Custom Habit Button */}
@@ -225,6 +258,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#ffffff',
+    gap: 8,
   },
   headerTitle: {
     ...theme.typography.headlineMd,
@@ -232,8 +266,6 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   headerIcon: {
-    position: 'absolute',
-    right: 20,
   },
   container: {
     padding: 20,

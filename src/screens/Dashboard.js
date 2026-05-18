@@ -94,8 +94,8 @@ const Dashboard = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Home</Text>
         <Home size={24} color="#0f172a" style={styles.headerIcon} />
+        <Text style={styles.headerTitle}>Home</Text>
       </View>
       <ScrollView 
         contentContainerStyle={styles.container}
@@ -239,6 +239,7 @@ const Dashboard = ({ navigation }) => {
               <HabitCard
                 key={habit.id}
                 name={habit.name}
+                category={habit.category}
                 streak={habit.streak}
                 completed={isHabitCompletedToday(habit)}
                 onToggle={() => toggleHabit(habit.id)}
@@ -280,6 +281,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#ffffff',
+    gap: 8,
   },
   headerTitle: {
     ...theme.typography.headlineMd,
@@ -287,8 +289,6 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   headerIcon: {
-    position: 'absolute',
-    right: 20,
   },
   greetingSection: {
     marginBottom: theme.spacing.md,

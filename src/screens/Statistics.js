@@ -4,23 +4,21 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Refre
 
 
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TrendingUp, Target, Award, BarChart3, Star, Lock, CheckCircle2 } from 'lucide-react-native';
+import { TrendingUp, Target, Award, BarChart3, Star, Lock, CheckCircle2, ChevronLeft, ChevronRight, Medal, Zap, Crown, Flame, Shield, Trophy, Rocket, Globe } from 'lucide-react-native';
 
 import { theme } from '../theme';
 import { useHabits } from '../context/HabitContext';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
-const CARD_PADDING = theme.spacing.lg;
-const CONTAINER_MARGIN = theme.spacing.margin;
-const AVAILABLE_WIDTH = width - (CONTAINER_MARGIN * 2) - (CARD_PADDING * 2);
-const GAP = 8;
-const BOX_SIZE = (AVAILABLE_WIDTH - (6 * GAP)) / 7;
 
 const Statistics = ({ navigation }) => {
 
 
   const { habits } = useHabits();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [viewDate, setViewDate] = useState(new Date());
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -39,8 +37,12 @@ const Statistics = ({ navigation }) => {
     const last7DaysCompletions = [0,0,0,0,0,0,0]; 
     const previous7DaysCompletions = [0,0,0,0,0,0,0];
     
-    // 2. Heatmap Data (Last 30 days)
-    const heatmapCounts = new Array(30).fill(0);
+    // 2. Heatmap Data (Current Month)
+    // 2. Heatmap Data (Current Month)
+    const currentYear = viewDate.getFullYear();
+    const currentMonth = viewDate.getMonth();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const heatmapCounts = new Array(daysInMonth).fill(0);
     
     // 3. Categories
     const categoryCounts = {};
@@ -66,8 +68,8 @@ const Statistics = ({ navigation }) => {
           previous7DaysCompletions[13 - diffDays]++;
         }
 
-        if (diffDays >= 0 && diffDays < 30) {
-          heatmapCounts[29 - diffDays]++;
+        if (year === currentYear && month - 1 === currentMonth) {
+          heatmapCounts[day - 1]++;
         }
       });
     });
@@ -98,26 +100,26 @@ const Statistics = ({ navigation }) => {
       percentage: totalCompletions === 0 ? 0 : Math.round((c.count / totalCompletions) * 100)
     }));
 
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+    
     const heatmapData = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dayNum = d.getDate();
+    const emptyDaysCount = firstDayOfMonth.getDay(); // 0 for Sunday
+    for (let i = 0; i < emptyDaysCount; i++) {
+      heatmapData.push({ empty: true });
+    }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(currentYear, currentMonth, i);
       const dayOfWeek = d.getDay(); // 0=Sun, 6=Sat
       heatmapData.push({
-        dayNum,
+        dayNum: i,
         isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
-        count: heatmapCounts[29 - i]
+        count: heatmapCounts[i - 1]
       });
     }
 
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const firstDay = new Date(today);
-    firstDay.setDate(firstDay.getDate() - 29);
-    
-    const monthLabel = firstDay.getMonth() === today.getMonth() 
-      ? monthNames[today.getMonth()] 
-      : `${monthNames[firstDay.getMonth()]} - ${monthNames[today.getMonth()]}`;
+    const monthLabel = `${monthNames[currentMonth]} ${currentYear}`;
 
     return {
       totalCompletions,
@@ -130,7 +132,7 @@ const Statistics = ({ navigation }) => {
       monthLabel,
       topCategories: catArray
     };
-  }, [habits]);
+  }, [habits, viewDate]);
 
 
 
@@ -149,8 +151,14 @@ const Statistics = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Stats</Text>
         <BarChart3 size={24} color="#0f172a" style={styles.headerIcon} />
+        <Text style={styles.headerTitle}>Stats</Text>
+        <TouchableOpacity 
+          style={{ position: 'absolute', right: 20 }}
+          onPress={() => navigation.navigate('Leaderboard')}
+        >
+          <Globe size={24} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -212,19 +220,47 @@ const Statistics = ({ navigation }) => {
         <View style={styles.whiteCard}>
           <View style={styles.heatmapHeader}>
             <Text style={styles.cardTitle}>Monthly Consistency</Text>
-            <Text style={styles.monthLabel}>{stats.monthLabel}</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
+              <TouchableOpacity onPress={() => {
+                const newDate = new Date(viewDate);
+                newDate.setMonth(newDate.getMonth() - 1);
+                setViewDate(newDate);
+              }} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+                <ChevronLeft size={20} color="#64748b" />
+              </TouchableOpacity>
+              
+              <Text style={[styles.monthLabel, { minWidth: 80, textAlign: 'center' }]}>{stats.monthLabel}</Text>
+              
+              <TouchableOpacity onPress={() => {
+                const newDate = new Date(viewDate);
+                newDate.setMonth(newDate.getMonth() + 1);
+                setViewDate(newDate);
+              }}
+              disabled={viewDate.getMonth() === new Date().getMonth() && viewDate.getFullYear() === new Date().getFullYear()}
+              style={{opacity: (viewDate.getMonth() === new Date().getMonth() && viewDate.getFullYear() === new Date().getFullYear()) ? 0.3 : 1}}
+              hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+              >
+                <ChevronRight size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.weekLabels}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-              <Text key={`label-${i}`} style={[styles.weekLabel, (i === 0 || i === 6) && { color: '#ef4444' }]}>
-                {day}
-              </Text>
+              <View key={`label-${i}`} style={styles.weekLabelWrapper}>
+                <Text style={[styles.weekLabel, (i === 0 || i === 6) && { color: '#ef4444' }]}>
+                  {day}
+                </Text>
+              </View>
             ))}
           </View>
 
           <View style={styles.heatmap}>
             {stats.heatmapData.map((item, i) => {
+              if (item.empty) {
+                return <View key={`empty-${i}`} style={styles.heatBoxWrapper} />;
+              }
+
               let bgColor = '#f1f5f9';
               if (item.count > 0) {
                 if (item.count === 1) bgColor = '#bbf7d0';
@@ -234,13 +270,12 @@ const Statistics = ({ navigation }) => {
               }
 
               return (
-                <View 
-                  key={`heat-${i}`} 
-                  style={[styles.heatBox, { backgroundColor: bgColor }]} 
-                >
-                  <Text style={[styles.heatText, item.isWeekend && styles.weekendText]}>
-                    {item.dayNum}
-                  </Text>
+                <View key={`heat-${i}`} style={styles.heatBoxWrapper}>
+                  <View style={[styles.heatBox, { backgroundColor: bgColor }]}>
+                    <Text style={[styles.heatText, item.isWeekend && styles.weekendText]}>
+                      {item.dayNum}
+                    </Text>
+                  </View>
                 </View>
               );
             })}
@@ -299,53 +334,37 @@ const Statistics = ({ navigation }) => {
 
         <Text style={styles.sectionTitle}>Milestones</Text>
         <View style={styles.milestonesGrid}>
-          {/* Milestone 1: Perfect Week */}
-          <View style={[styles.milestoneCard, stats.bestStreak < 7 && styles.milestoneCardLocked]}>
-            <View style={[
-              styles.milestoneBadge, 
-              stats.bestStreak >= 7 ? { backgroundColor: '#22c55e', elevation: 8, shadowColor: '#22c55e' } : styles.milestoneBadgeLocked
-            ]}>
-              {stats.bestStreak >= 7 ? <Star size={24} color="#ffffff" /> : <Lock size={20} color="#cbd5e1" />}
-            </View>
-            <Text style={styles.milestoneName}>Perfect Week</Text>
-            <Text style={styles.milestoneStatus}>{stats.bestStreak >= 7 ? 'ACHIEVED' : `${stats.bestStreak}/7 DAYS`}</Text>
-          </View>
-
-          {/* Milestone 2: 30-Day Warrior */}
-          <View style={[styles.milestoneCard, stats.bestStreak < 30 && styles.milestoneCardLocked]}>
-            <View style={[
-              styles.milestoneBadge, 
-              stats.bestStreak >= 30 ? { backgroundColor: '#f97316', elevation: 8, shadowColor: '#f97316' } : styles.milestoneBadgeLocked
-            ]}>
-              {stats.bestStreak >= 30 ? <Award size={24} color="#ffffff" /> : <Lock size={20} color="#cbd5e1" />}
-            </View>
-            <Text style={styles.milestoneName}>30-Day Warrior</Text>
-            <Text style={styles.milestoneStatus}>{stats.bestStreak >= 30 ? 'ACHIEVED' : `${stats.bestStreak}/30 DAYS`}</Text>
-          </View>
-
-          {/* Milestone 3: Century Club */}
-          <View style={[styles.milestoneCard, stats.totalCompletions < 100 && styles.milestoneCardLocked]}>
-            <View style={[
-              styles.milestoneBadge, 
-              stats.totalCompletions >= 100 ? { backgroundColor: '#3b82f6', elevation: 8, shadowColor: '#3b82f6' } : styles.milestoneBadgeLocked
-            ]}>
-              {stats.totalCompletions >= 100 ? <CheckCircle2 size={24} color="#ffffff" /> : <Lock size={20} color="#cbd5e1" />}
-            </View>
-            <Text style={styles.milestoneName}>Century Club</Text>
-            <Text style={styles.milestoneStatus}>{stats.totalCompletions >= 100 ? 'ACHIEVED' : `${stats.totalCompletions}/100 DAYS`}</Text>
-          </View>
-
-          {/* Milestone 4: Consistency King */}
-          <View style={[styles.milestoneCard, stats.totalCompletions < 50 && styles.milestoneCardLocked]}>
-            <View style={[
-              styles.milestoneBadge, 
-              stats.totalCompletions >= 50 ? { backgroundColor: '#a855f7', elevation: 8, shadowColor: '#a855f7' } : styles.milestoneBadgeLocked
-            ]}>
-              {stats.totalCompletions >= 50 ? <Target size={24} color="#ffffff" /> : <Lock size={20} color="#cbd5e1" />}
-            </View>
-            <Text style={styles.milestoneName}>Consistency King</Text>
-            <Text style={styles.milestoneStatus}>{stats.totalCompletions >= 50 ? 'ACHIEVED' : `${stats.totalCompletions}/50 DONE`}</Text>
-          </View>
+          {[
+            { id: 1, title: 'Habit Starter', target: 1, type: 'completions', icon: Rocket, color: '#fca5a5' },
+            { id: 2, title: 'Perfect Week', target: 7, type: 'streak', icon: Star, color: '#22c55e' },
+            { id: 3, title: 'Double Digits', target: 10, type: 'completions', icon: Medal, color: '#60a5fa' },
+            { id: 4, title: 'Momentum', target: 14, type: 'streak', icon: Zap, color: '#eab308' },
+            { id: 5, title: '30-Day Warrior', target: 30, type: 'streak', icon: Award, color: '#f97316' },
+            { id: 6, title: user?.gender?.toLowerCase() === 'female' ? 'Consistency Queen' : 'Consistency King', target: 50, type: 'completions', icon: Crown, color: '#a855f7' },
+            { id: 7, title: 'On Fire', target: 60, type: 'streak', icon: Flame, color: '#ef4444' },
+            { id: 8, title: 'Century Club', target: 100, type: 'completions', icon: CheckCircle2, color: '#3b82f6' },
+            { id: 9, title: 'Half-Year Hero', target: 180, type: 'streak', icon: Shield, color: '#14b8a6' },
+            { id: 10, title: 'Grandmaster', target: 500, type: 'completions', icon: Trophy, color: '#eab308' },
+          ].map((milestone) => {
+            const currentValue = milestone.type === 'streak' ? stats.bestStreak : stats.totalCompletions;
+            const isUnlocked = currentValue >= milestone.target;
+            const IconComp = milestone.icon;
+            
+            return (
+              <View key={milestone.id} style={[styles.milestoneCard, !isUnlocked && styles.milestoneCardLocked]}>
+                <View style={[
+                  styles.milestoneBadge, 
+                  isUnlocked ? { backgroundColor: milestone.color, elevation: 8, shadowColor: milestone.color } : styles.milestoneBadgeLocked
+                ]}>
+                  {isUnlocked ? <IconComp size={24} color="#ffffff" /> : <Lock size={20} color="#cbd5e1" />}
+                </View>
+                <Text style={styles.milestoneName}>{milestone.title}</Text>
+                <Text style={styles.milestoneStatus}>
+                  {isUnlocked ? 'ACHIEVED' : `${currentValue}/${milestone.target} ${milestone.type === 'streak' ? 'DAYS' : 'DONE'}`}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
       </ScrollView>
@@ -365,6 +384,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#ffffff',
+    gap: 8,
   },
   headerTitle: {
     ...theme.typography.headlineMd,
@@ -372,8 +392,6 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   headerIcon: {
-    position: 'absolute',
-    right: 20,
   },
   container: {
     padding: theme.spacing.margin,
@@ -479,7 +497,7 @@ const styles = StyleSheet.create({
   heatmapHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
     marginBottom: 16,
   },
   monthLabel: {
@@ -489,13 +507,13 @@ const styles = StyleSheet.create({
   },
   weekLabels: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 2,
     marginBottom: 8,
   },
+  weekLabelWrapper: {
+    width: '14.28%',
+    alignItems: 'center',
+  },
   weekLabel: {
-    width: BOX_SIZE,
-    textAlign: 'center',
     ...theme.typography.labelCaps,
     fontSize: 9,
     color: '#94a3b8',
@@ -503,15 +521,15 @@ const styles = StyleSheet.create({
   heatmap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
     marginVertical: 4,
-    justifyContent: 'flex-start',
   },
-
-
+  heatBoxWrapper: {
+    width: '14.28%',
+    aspectRatio: 1,
+    padding: 4,
+  },
   heatBox: {
-    width: BOX_SIZE,
-    height: BOX_SIZE,
+    flex: 1,
     borderRadius: 4,
     backgroundColor: '#f1f5f9',
     justifyContent: 'center',

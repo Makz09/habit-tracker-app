@@ -9,6 +9,9 @@ import { useAuth } from '../context/AuthContext';
 import { useHabits } from '../context/HabitContext';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+import { requestPermissions } from '../utils/notifications';
 
 const SettingsDetail = ({ route, navigation }) => {
   const { type } = route.params;
@@ -16,10 +19,90 @@ const SettingsDetail = ({ route, navigation }) => {
   const { habits } = useHabits();
 
   const [notifications, setNotifications] = React.useState({
-    dailyReminders: true,
-    weeklyReports: true,
+    dailyReminders: false,
+    weeklyReports: false,
     communityUpdates: false,
   });
+
+  React.useEffect(() => {
+    if (type === 'notifications') {
+      loadSettings();
+    }
+  }, [type]);
+
+  const loadSettings = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@notification_settings');
+      if (stored) {
+        setNotifications(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.log('Failed to load settings', e);
+    }
+  };
+
+  const handleToggle = async (key, value) => {
+    const newSettings = { ...notifications, [key]: value };
+    setNotifications(newSettings);
+    await AsyncStorage.setItem('@notification_settings', JSON.stringify(newSettings));
+    
+    if (key === 'dailyReminders') {
+      if (value) {
+        const hasPerms = await requestPermissions();
+        if (hasPerms) {
+          await Notifications.scheduleNotificationAsync({
+            identifier: 'daily-reminder',
+            content: {
+              title: "Daily Habit Check-in 🌟",
+              body: "Take a moment to log your habits today and keep your streak alive!",
+              sound: true,
+            },
+            trigger: {
+              hour: 8, // 8 AM
+              minute: 0,
+              repeats: true,
+            },
+          });
+        } else {
+          Alert.alert("Permission Required", "Please enable notifications in your device settings.");
+          const reverted = { ...notifications, [key]: false };
+          setNotifications(reverted);
+          await AsyncStorage.setItem('@notification_settings', JSON.stringify(reverted));
+        }
+      } else {
+        try { await Notifications.cancelScheduledNotificationAsync('daily-reminder'); } catch(e) {}
+      }
+    }
+
+    if (key === 'weeklyReports') {
+      if (value) {
+        const hasPerms = await requestPermissions();
+        if (hasPerms) {
+          await Notifications.scheduleNotificationAsync({
+            identifier: 'weekly-report',
+            content: {
+              title: "Weekly Summary Ready 📊",
+              body: "Check out how well you did this week!",
+              sound: true,
+            },
+            trigger: {
+              weekday: 1, // Sunday
+              hour: 10,
+              minute: 0,
+              repeats: true,
+            },
+          });
+        } else {
+          Alert.alert("Permission Required", "Please enable notifications in your device settings.");
+          const reverted = { ...notifications, [key]: false };
+          setNotifications(reverted);
+          await AsyncStorage.setItem('@notification_settings', JSON.stringify(reverted));
+        }
+      } else {
+        try { await Notifications.cancelScheduledNotificationAsync('weekly-report'); } catch(e) {}
+      }
+    }
+  };
 
   const renderContent = () => {
     switch (type) {
@@ -35,7 +118,7 @@ const SettingsDetail = ({ route, navigation }) => {
                 </View>
                 <Switch 
                   value={notifications.dailyReminders} 
-                  onValueChange={(v) => setNotifications(prev => ({ ...prev, dailyReminders: v }))}
+                  onValueChange={(v) => handleToggle('dailyReminders', v)}
                   trackColor={{ false: '#cbd5e1', true: '#22c55e' }}
                 />
               </View>
@@ -47,7 +130,7 @@ const SettingsDetail = ({ route, navigation }) => {
                 </View>
                 <Switch 
                   value={notifications.weeklyReports} 
-                  onValueChange={(v) => setNotifications(prev => ({ ...prev, weeklyReports: v }))}
+                  onValueChange={(v) => handleToggle('weeklyReports', v)}
                   trackColor={{ false: '#cbd5e1', true: '#22c55e' }}
                 />
               </View>
@@ -62,7 +145,7 @@ const SettingsDetail = ({ route, navigation }) => {
                 </View>
                 <Switch 
                   value={notifications.communityUpdates} 
-                  onValueChange={(v) => setNotifications(prev => ({ ...prev, communityUpdates: v }))}
+                  onValueChange={(v) => handleToggle('communityUpdates', v)}
                   trackColor={{ false: '#cbd5e1', true: '#22c55e' }}
                 />
               </View>

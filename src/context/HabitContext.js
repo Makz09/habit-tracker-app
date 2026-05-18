@@ -23,6 +23,7 @@ export const HabitProvider = ({ children }) => {
   const [habits, setHabits] = useState([]);
   const [customCategories, setCustomCategories] = useState([]);
   const [communityHabits, setCommunityHabits] = useState([]);
+  const [allGlobalHabits, setAllGlobalHabits] = useState([]);
   const [communityCategories, setCommunityCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -58,11 +59,14 @@ export const HabitProvider = ({ children }) => {
 
   // Sync Community/Global Data
   useEffect(() => {
+    if (!user) {
+      setAllGlobalHabits([]);
+      setCommunityCategories([]);
+      return;
+    }
+
     // Community Habits (Collection Group query to get habits from ALL users)
-    const allHabitsQuery = query(
-      collectionGroup(db, 'habits'),
-      limit(100)
-    );
+    const allHabitsQuery = query(collectionGroup(db, 'habits'));
 
     const unsubCommunityHabits = onSnapshot(allHabitsQuery, (snapshot) => {
       const allHabits = snapshot.docs.map(doc => ({ 
@@ -70,52 +74,50 @@ export const HabitProvider = ({ children }) => {
         ...doc.data(),
         isCommunity: true 
       }));
-      
-      // Group by habit name to calculate the activeCount
-      const groupedHabits = {};
-      allHabits.forEach(h => {
-        if (!h.name) return;
+      setAllGlobalHabits(allHabits);
+    });
+
+    return () => {
+      unsubCommunityHabits();
+    };
+  }, [user]);
+
+  // Compute communityHabits and communityCategories based on allGlobalHabits
+  useEffect(() => {
+    const groupedHabits = {};
+    const categoryCounts = {};
+
+    allGlobalHabits.forEach(h => {
+      if (h.name) {
         const normalizedName = h.name.toLowerCase().trim();
         if (!groupedHabits[normalizedName]) {
           groupedHabits[normalizedName] = { ...h, activeCount: 0 };
         }
         groupedHabits[normalizedName].activeCount += 1;
+      }
+
+      if (h.category) {
+        const cat = h.category.trim();
+        const normalizedCat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+        categoryCounts[normalizedCat] = (categoryCounts[normalizedCat] || 0) + 1;
+      }
+    });
+
+    const processedHabits = Object.values(groupedHabits)
+      .filter(h => !habits.some(myH => myH.name?.toLowerCase().trim() === h.name?.toLowerCase().trim()))
+      .map(h => {
+        let countStr = h.activeCount.toString();
+        if (h.activeCount >= 1000) {
+          countStr = (h.activeCount / 1000).toFixed(1) + 'K';
+        }
+        return { ...h, activeCount: countStr };
       });
 
-      // Format the activeCount and filter out user's current habits
-      const processedHabits = Object.values(groupedHabits)
-        .filter(h => !habits.some(myH => myH.name?.toLowerCase().trim() === h.name?.toLowerCase().trim()))
-        .map(h => {
-          let countStr = h.activeCount.toString();
-          if (h.activeCount >= 1000) {
-            countStr = (h.activeCount / 1000).toFixed(1) + 'K';
-          }
-          return { ...h, activeCount: countStr };
-        });
+    const sortedCats = Object.keys(categoryCounts).sort((a, b) => categoryCounts[b] - categoryCounts[a]);
 
-      setCommunityHabits(processedHabits);
-    });
-
-    // Community Categories
-    const allCatsQuery = query(collectionGroup(db, 'categories'), limit(50));
-    const unsubCommunityCats = onSnapshot(allCatsQuery, (snapshot) => {
-      const cats = snapshot.docs.map(doc => doc.data().name);
-      // Count frequency of each category
-      const counts = cats.reduce((acc, cat) => {
-        acc[cat] = (acc[cat] || 0) + 1;
-        return acc;
-      }, {});
-      
-      // Sort by frequency and get unique names
-      const sortedCats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-      setCommunityCategories(sortedCats);
-    });
-
-    return () => {
-      unsubCommunityHabits();
-      unsubCommunityCats();
-    };
-  }, [user, habits]);
+    setCommunityHabits(processedHabits);
+    setCommunityCategories(sortedCats);
+  }, [allGlobalHabits, habits]);
 
   const addCategory = async (name) => {
     if (!user || !name) return;
